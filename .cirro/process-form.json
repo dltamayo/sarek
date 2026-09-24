@@ -1,0 +1,276 @@
+{
+  "ui": {
+    "read_trimming_options": {
+      "trim_fastq": {
+        "ui:widget": "radio"
+      }
+    },
+    "extra_params_json": {
+      "ui:widget": "textarea",
+      "ui:placeholder": "{\"skip_markduplicates\": true}"
+    }
+  },
+  "form": {
+    "title": "Align Reads (nf-core/sarek, dltamayo fork)",
+    "description": "Runs dltamayo/sarek@cirro-config/parabricks-known-sites-fix instead of a released nf-core/sarek version.",
+    "type": "object",
+    "properties": {
+      "analysis_type": {
+        "title": "Experimental Design",
+        "description": "Details on the reference genome and optional target panel used to generate sequences.",
+        "type": "object",
+        "required": ["wes"],
+        "properties": {
+          "genome_selection": {
+            "title": "Reference Genome",
+            "type": "object",
+            "properties": {
+              "genome_source": {
+                "type": "string",
+                "title": "Reference Genome Source",
+                "description": "Select whether to use a curated iGenomes reference or a pre-built BWA genome index dataset from Cirro.",
+                "enum": ["igenomes", "dataset"],
+                "enumNames": ["iGenomes", "Custom Genome"],
+                "default": "igenomes"
+              }
+            },
+            "dependencies": {
+              "genome_source": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "genome_source": { "enum": ["igenomes"] },
+                      "igenomes": {
+                        "type": "object",
+                        "title": "Reference Genome (iGenomes)",
+                        "description": "Select a curated reference genome from the iGenomes collection.",
+                        "properties": {
+                          "genome": {
+                            "title": "Select A Reference Genome",
+                            "type": "string",
+                            "default": "GATK.GRCh38",
+                            "enum": ["GATK.GRCh38", "GATK.GRCh37", "GRCm38"],
+                            "enumNames": [
+                              "Homo sapiens (GATK.GRCh38)",
+                              "Homo sapiens (GATK.GRCh37)",
+                              "Mus musculus (GRCm38)"
+                            ]
+                          }
+                        }
+                      },
+                      "aligner": {
+                        "type": "string",
+                        "title": "Aligner",
+                        "description": "Aligner used to map reads to the reference genome. iGenomes provides pre-built indices for these aligners; sarek builds one from the FASTA if it isn't already available. IMPORTANT: Parabricks is GPU-accelerated, requesting a 4-GPU instance with up to 64 vCPUs, and GPU instances are NOT enabled by default in every Cirro environment. Check with your Cirro administrator to confirm GPU capacity is available AND that the compute environment's maxvCpus is at least 64 before selecting Parabricks -- enabling the right instance family alone is not enough; a maxvCpus ceiling below what a single GPU instance requires (every 4-GPU size needs at least 48 vCPUs) hits the same failure mode: the run stalls indefinitely at this step instead of failing with an error.",
+                        "enum": ["bwa-mem", "bwa-mem2", "parabricks"],
+                        "enumNames": ["BWA", "BWA-MEM2", "Parabricks (requires GPU -- confirm with admin)"],
+                        "default": "bwa-mem"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "genome_source": { "enum": ["dataset"] },
+                      "aligner": {
+                        "type": "string",
+                        "title": "Aligner",
+                        "description": "Aligner used to build the custom genome index dataset. Must match the index type selected below. IMPORTANT: Parabricks is GPU-accelerated, requesting a 4-GPU instance with up to 64 vCPUs, and GPU instances are NOT enabled by default in every Cirro environment. Check with your Cirro administrator to confirm GPU capacity is available AND that the compute environment's maxvCpus is at least 64 before selecting Parabricks -- enabling the right instance family alone is not enough; a maxvCpus ceiling below what a single GPU instance requires (every 4-GPU size needs at least 48 vCPUs) hits the same failure mode: the run stalls indefinitely at this step instead of failing with an error.",
+                        "enum": ["bwa-mem", "bwa-mem2", "parabricks"],
+                        "enumNames": ["BWA", "BWA-MEM2", "Parabricks (requires GPU -- confirm with admin)"],
+                        "default": "bwa-mem"
+                      },
+                      "dbsnp": {
+                        "title": "dbSNP / Known Sites (VCF)",
+                        "type": "string",
+                        "pathType": "references",
+                        "file": "**/germline_resource/**/germline_resource.vcf.gz",
+                        "useS3Path": true,
+                        "description": "Optional: a VCF of known variant sites (e.g. dbSNP, or a species-appropriate known-sites resource), published to the project's references library. Cirro's references library only supports VCFs under the germline_resource reference type, so publish it there (or paste its S3 path directly). Combined with Known Indels below to enable base quality score recalibration (BQSR) -- providing either field is enough; BQSR is otherwise skipped automatically for custom genomes."
+                      },
+                      "known_indels": {
+                        "title": "Known Indels (VCF)",
+                        "type": "string",
+                        "pathType": "references",
+                        "file": "**/germline_resource/**/germline_resource.vcf.gz",
+                        "useS3Path": true,
+                        "description": "Optional: a VCF of known indel sites, published to the project's references library (same germline_resource reference type as above -- pick a different entry than dbSNP, or paste its S3 path directly). Combined with dbSNP / Known Sites above to enable base quality score recalibration (BQSR) -- providing either field is enough; BQSR is otherwise skipped automatically for custom genomes."
+                      }
+                    },
+                    "dependencies": {
+                      "aligner": {
+                        "oneOf": [
+                          {
+                            "properties": {
+                              "aligner": { "enum": ["bwa-mem", "parabricks"] },
+                              "bwa_cirro_reference": {
+                                "type": "object",
+                                "title": "Custom Genome Index (BWA)",
+                                "description": "Select a pre-built BWA genome index dataset from Cirro. Parabricks uses the same BWA index format as bwa-mem. Base recalibration is skipped unless dbSNP / Known Indels are also provided above.",
+                                "properties": {
+                                  "genome_index": {
+                                    "title": "BWA Genome Index",
+                                    "type": "string",
+                                    "pathType": "dataset",
+                                    "process": [
+                                      "process-cirro-genome-index-bwa-1-0",
+                                      "genome_bwa_index"
+                                    ],
+                                    "description": "Pre-built BWA genome index dataset"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "aligner": { "enum": ["bwa-mem2"] },
+                              "bwamem2_cirro_reference": {
+                                "type": "object",
+                                "title": "Custom Genome Index (BWA-MEM2)",
+                                "description": "Select a pre-built BWA-MEM2 genome index dataset from Cirro. Base recalibration is skipped unless dbSNP / Known Indels are also provided above.",
+                                "properties": {
+                                  "genome_index": {
+                                    "title": "BWA-MEM2 Genome Index",
+                                    "type": "string",
+                                    "pathType": "dataset",
+                                    "process": [
+                                      "process-cirro-genome-index-bwa-mem2-1-0",
+                                      "genome_bwa-mem2_index"
+                                    ],
+                                    "description": "Pre-built BWA-MEM2 genome index dataset"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "wes": {
+            "title": "Whole Exome/Targeted Gene Panel Assay",
+            "description": "Please indicate if your data was generated using a capture kit.",
+            "type": "boolean",
+            "default": false
+          },
+          "intervals": {
+            "title": "Genomic intervals",
+            "description": "Target bed file in case of whole exome or targeted sequencing or intervals file for parallelization.",
+            "type": "string",
+            "pathType": "references",
+            "file": "**/genome_bed/**/regions.bed"
+          }
+        }
+      },
+      "read_trimming_options": {
+        "title": "Read Trimming Options",
+        "description": "Parameters for performing adapter and read trimming using Trim-Galore.",
+        "type": "object",
+        "properties": {
+          "trim_fastq": {
+            "type": "boolean",
+            "title": "Trim reads using Trim-Galore?",
+            "default": false
+          }
+        },
+        "dependencies": {
+          "trim_fastq": {
+            "oneOf": [
+              {
+                "properties": {
+                  "trim_fastq": {
+                    "enum": [false]
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "trim_fastq": {
+                    "enum": [true]
+                  },
+                  "clip_r1": {
+                    "type": "integer",
+                    "title": "Clip R1",
+                    "description": "Instructs Trim Galore to remove bp from the 5' end of read 1 (or single-end reads)."
+                  },
+                  "clip_r2": {
+                    "type": "integer",
+                    "title": "Clip R2",
+                    "description": "Instructs Trim Galore to remove bp from the 5' end of read 2 (paired-end reads only)."
+                  },
+                  "three_prime_clip_r1": {
+                    "type": "integer",
+                    "title": "Three Prime Clip R1",
+                    "description": "Instructs Trim Galore to remove bp from the 3' end of read 1 AFTER adapter/quality trimming has been performed."
+                  },
+                  "three_prime_clip_r2": {
+                    "type": "integer",
+                    "title": "Three Prime Clip R2",
+                    "description": "Instructs Trim Galore to remove bp from the 3' end of read 2 AFTER adapter/quality trimming has been performed."
+                  },
+                  "trim_nextseq": {
+                    "type": "boolean",
+                    "title": "Trim NextSeq",
+                    "description": "DetectS polyG in read tails and trim them. Corresponds to the FastP flag `--trim_poly_g.`"
+                  },
+                  "save_trimmed": {
+                    "type": "boolean",
+                    "title": "Save the trimmed FastQ files in the results directory?",
+                    "default": false
+                  },
+                  "length_required": {
+                    "type": "integer",
+                    "title": "Minimum read length",
+                    "description": "Minimum length of reads to keep after trimming (FastP --length_required).",
+                    "default": 15
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "advanced_options": {
+        "type": "object",
+        "title": "Advanced Options",
+        "properties": {
+          "optical_duplicate_pixel_distance": {
+            "type": "integer",
+            "title": "MarkDuplicates - Optical Duplicate Pixel Distance",
+            "description": "The `--OPTICAL_DUPLICATE_PIXEL_DISTANCE` parameter is used by MarkDuplicates to set the maximum offset between two duplicate clusters in pixels for them to be considered optical duplicates. A value of 100 is generally appropriate for unpatterned Illumina flowcells and 250 is appropriate for patterned Illumina flow cells.",
+            "default": 100
+          },
+          "save_output_as_bam": {
+            "type": "boolean",
+            "title": "Save Output as BAM",
+            "description": "Save mapped reads as BAM files instead of the default CRAM format.",
+            "default": true
+          },
+          "save_mapped": {
+            "type": "boolean",
+            "title": "Save Mapped Reads",
+            "description": "Save the mapped BAM/CRAM files (before duplicate marking) to the results directory.",
+            "default": false
+          },
+          "split_fastq": {
+            "type": "integer",
+            "title": "Split FastQ size",
+            "description": "Number of reads per split of each FastQ file; splitting parallelizes mapping across shards to speed it up. Set 0 to disable splitting.",
+            "default": 50000000
+          }
+        }
+      },
+      "extra_params_json": {
+        "type": "string",
+        "title": "Extra Parameters (JSON)",
+        "description": "Optional: provide additional workflow parameters as a JSON object (e.g. {\"skip_markduplicates\": true}). Parameters are validated against the nf-core/sarek schema for the selected workflow version — unrecognized keys are silently removed.",
+        "maxLength": 10000,
+        "default": ""
+      }
+    }
+  }
+}

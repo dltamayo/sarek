@@ -1,0 +1,69 @@
+{
+  "id": "process-nf-core-sarek-align-parabricks-fork-test",
+  "childProcessIds": [],
+  "dataType": "Aligned Reads (BAM/CRAM)",
+  "name": "Align Reads (nf-core/sarek, dltamayo fork)",
+  "desc": "Align genomic reads to a reference genome based on GATK4 best practices. Runs dltamayo/sarek@cirro-config/parabricks-known-sites-fix.",
+  "executor": "NEXTFLOW",
+  "pipelineTypeOverride": "nf-core",
+  "category": "DNA Sequencing",
+  "documentationUrl": "https://github.com/nf-core/sarek/pull/2287",
+  "code": {
+    "repository": "GITHUBPUBLIC",
+    "script": "main.nf",
+    "uri": "dltamayo/sarek",
+    "version": "cirro-config/parabricks-known-sites-fix",
+    "executorVersion": "25.10.4"
+  },
+  "allowMultipleSources": true,
+  "usesSampleSheet": true,
+  "computeDefaults": [
+    {
+      "executor": "NEXTFLOW",
+      "json": "s3://<RESOURCES_BUCKET>/<PROCESS_DIRECTORY>/process-compute.config",
+      "name": "Default"
+    }
+  ],
+  "paramMapJson": "s3://<RESOURCES_BUCKET>/<PROCESS_DIRECTORY>/process-input.json",
+  "preProcessScript": "s3://<RESOURCES_BUCKET>/<PROCESS_DIRECTORY>/preprocess.py",
+  "formJson": "s3://<RESOURCES_BUCKET>/<PROCESS_DIRECTORY>/process-form.json",
+  "webOptimizationJson": "s3://<RESOURCES_BUCKET>/<PROCESS_DIRECTORY>/process-output.json",
+  "fileMappingRules": [
+    {
+      "description": "Aligned Reads",
+      "min": 2,
+      "fileNamePatterns": [
+        {
+          "exampleName": "preprocessing/recalibrated/SampleName/SampleName.recal.bam",
+          "description": "Recalibrated alignments (BAM/CRAM)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>recalibrated)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam|cram)$"
+        },
+        {
+          "exampleName": "preprocessing/recalibrated/SampleName/SampleName.recal.bam.bai",
+          "description": "Recalibrated alignments (BAM/CRAM Index)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>recalibrated)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam\\.bai|cram\\.crai)$"
+        },
+        {
+          "exampleName": "preprocessing/markduplicates/SampleName/SampleName.md.bam",
+          "description": "Duplicate-marked alignments (BAM/CRAM)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>markduplicates|sentieon_dedup)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam|cram)$"
+        },
+        {
+          "exampleName": "preprocessing/markduplicates/SampleName/SampleName.md.bam.bai",
+          "description": "Duplicate-marked alignments (BAM/CRAM Index)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>markduplicates|sentieon_dedup)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam\\.bai|cram\\.crai)$"
+        },
+        {
+          "exampleName": "preprocessing/mapped/SampleName/SampleName.sorted.bam",
+          "description": "Aligned reads (BAM/CRAM)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>[^/]+)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam|cram)$"
+        },
+        {
+          "exampleName": "preprocessing/mapped/SampleName/SampleName.sorted.bam.bai",
+          "description": "Aligned reads (BAM/CRAM Index)",
+          "sampleMatchingPattern": "preprocessing/(?P<bamType>[^/]+)/(?P<sampleName>[^/]+)/[^/]+\\.(?:bam\\.bai|cram\\.crai)$"
+        }
+      ]
+    }
+  ]
+}
